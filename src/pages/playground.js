@@ -16,8 +16,6 @@ import Layout from '@theme/Layout';
 import clsx from 'clsx';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Heading from '@theme/Heading';
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 import styles from './playground.module.css';
 
 // API endpoint for FlexNetSim simulation service
@@ -186,14 +184,6 @@ function PlaygroundPage() {
     }
   };
   
-  // Update simulation name
-  const updateSimulationName = (index, name) => {
-    const sim = simulations[index];
-    if (!sim) return;
-    
-    updateSimulation(sim.id, { name });
-  };
-  
   // Function to run simulation with mock data for demo/development purposes
   const runMockSimulation = (id) => {
     const simulation = simulations.find(sim => sim.id === id);
@@ -205,9 +195,10 @@ function PlaygroundPage() {
       stage: STAGES.RESULTS,
       isSimulating: true,
       outputLines: [],
+      name: currentParams.network + ' - ' + currentParams.algorithm,
       progress: 0
     });
-    
+
     // Mock simulation data matching the exact format from the example
     const mockOutput = [
       "--- Flex Net Sim (0.8.0) ---",
@@ -288,7 +279,7 @@ function PlaygroundPage() {
     try {
       // Toggle between API and mock mode
       // For development/demo, set this to true to use mock data instead of real API
-      const useMockData = true;
+      const useMockData = false;
       
       if (useMockData) {
         runMockSimulation(id);
@@ -384,15 +375,18 @@ function PlaygroundPage() {
           "- The API server might be down or unreachable",
           "- CORS policies might be preventing the connection",
           "- Network connectivity issues",
-          "",
-          "Using mock simulation data instead..."
+          ""
         ]
       }));
+      updateSimulation(id, sim => ({
+        progress: 100
+      }));
+      updateSimulation(id, { isSimulating: false });
       
       // Fall back to mock data on error
-      setTimeout(() => {
-        runMockSimulation(id);
-      }, 2000);
+      // setTimeout(() => {
+      //   runMockSimulation(id);
+      // }, 2000);
     }
   };
 
@@ -700,19 +694,13 @@ function PlaygroundPage() {
     }
   };
 
-  // We no longer need this as we're now rendering tabs directly
-  const handleTabNameUpdate = (e, index) => {
-    e.stopPropagation();
-    updateSimulationName(index, e.target.value);
-  };
-
   return (
     <Layout
       title={`Playground | ${siteConfig.title}`}
       description="Interactive playground for FlexNetSim optical network simulations">
       <div className={styles.appContainer}>
         <header className={styles.header}>
-          <Heading as="h1">Optical Network Simulation Playground</Heading>
+          <Heading as="h1">Simulation Playground</Heading>
           <p className={styles.subtitle}>
             Experiment with the Flex Net Sim C++ library through an interactive interface
           </p>

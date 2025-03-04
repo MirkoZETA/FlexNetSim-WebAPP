@@ -74,14 +74,14 @@ const config = {
           src: 'img/logo_transparent.png',
         },
         items: [
+          {to: '/playground', label: 'Playground', position: 'left'},
           {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
-            label: 'Tutorial',
+            label: 'Docs',
           },
-          {to: '/playground', label: 'Playground', position: 'left'},
-          {to: '/blog', label: 'Blog', position: 'left'},
+          // {to: '/blog', label: 'Blog', position: 'left'},
           {
             href: 'https://github.com/MirkoZETA/FlexNetSim-WebAPP',
             label: 'GitHub',
@@ -90,49 +90,53 @@ const config = {
         ],
       },
       footer: {
-        style: 'dark',
+        style: 'light',
         links: [
           {
-            title: 'Docs',
+            title: 'Libraries Documentation',
             items: [
               {
-                label: 'Tutorial',
-                to: '/docs/intro',
+                label: 'C++ Library Docs',
+                href: 'https://flex-net-sim.readthedocs.io/latest/',
+              },
+              {
+                label: 'Python Library Docs',
+                href: 'https://daniloborquez.gitlab.io/flex-net-sim-python/'
+              }
+            ],
+          },
+          {
+            title: 'Code & API',
+            items: [
+              {
+                label: 'API Repository',
+                href: 'https://github.com/MirkoZETA/FlexNetSim-API',
+              },
+              {
+                label: 'Web App GitHub',
+                href: 'https://github.com/MirkoZETA/FlexNetSim-WebAPP',
               },
             ],
           },
           {
-            title: 'Community',
+            title: 'Author',
             items: [
               {
-                label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+                label: 'LinkedIn',
+                href: 'https://cl.linkedin.com/in/mirko-zitkovich-77131b261',
               },
               {
-                label: 'Discord',
-                href: 'https://discordapp.com/invite/docusaurus',
+                label: 'ResearchGate',
+                href: 'https://www.researchgate.net/profile/Mirko-Zitkovich',
               },
               {
-                label: 'X',
-                href: 'https://x.com/docusaurus',
-              },
-            ],
-          },
-          {
-            title: 'More',
-            items: [
-              {
-                label: 'Blog',
-                to: '/blog',
-              },
-              {
-                label: 'GitHub',
-                href: 'https://github.com/facebook/docusaurus',
+                label: 'Google Scholar',
+                href: 'https://scholar.google.com/citations?user=_l5ITgEAAAAJ&hl=es',
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Flex Net Sim. MIT License.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Mirko Zitkovich. MIT License.`,
       },
       prism: {
         theme: prismThemes.github,

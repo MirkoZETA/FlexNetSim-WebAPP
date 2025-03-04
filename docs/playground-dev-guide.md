@@ -1,4 +1,8 @@
-# FlexNetSim Playground Developer Guide
+---
+sidebar_position: 2
+---
+
+# Developer Guide
 
 This guide provides detailed information about the implementation of the FlexNetSim Playground page, its architecture, and how to extend or modify it.
 
