@@ -1,6 +1,6 @@
 # FlexNetSim-WebAPP
 
-A web-based playground for interacting with the Flex Net Sim optical network simulation library. Built with [Docusaurus](https://docusaurus.io/), a modern static website generator.
+A web-based playground for simple optical network simulations using the Flex Net Sim C++ library, designed as an introduction to its core capabilities. Built with [Docusaurus](https://docusaurus.io/), it offers an interactive interface for configuring network topologies, running basic simulations, and viewing real-time results. Supports up to three simultaneous simulations for easy comparison.
 
 ## Features
 
