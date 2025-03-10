@@ -168,7 +168,7 @@ Potential enhancements to consider:
 ### Constants
 
 - `NETWORKS`: Available network topologies (NSFNet, Cost239, EuroCore, etc.)
-- `ALGORITHMS`: Available RSA algorithms (FirstFit, ExactFit, etc.)
+- `ALGORITHMS`: Available RSA algorithms (FirstFit, BestFit, etc.)
 - `BITRATES`: Available bitrate modes (fixed-rate, flex-rate)
 - `STAGES`: Workflow stages object defining the three simulation stages
 
