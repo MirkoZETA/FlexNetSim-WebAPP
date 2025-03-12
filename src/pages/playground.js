@@ -326,14 +326,14 @@ function PlaygroundPage() {
                 try {
                   const eventData = JSON.parse(line.substring(5).trim());
                   
-                  if (eventData.status === 'running' && eventData.data) {
+                  if (eventData.status === 'running' && eventData.message) {
                     // Add the new line to our output
                     updateSimulation(id, sim => ({
-                      outputLines: [...sim.outputLines, eventData.data]
+                      outputLines: [...sim.outputLines, eventData.message]
                     }));
                     
                     // Extract progress information if available
-                    const progressMatch = eventData.data.match(/\s*(\d+\.\d+)%\s*\|/);
+                    const progressMatch = eventData.message.match(/\s*(\d+\.\d+)%\s*\|/);
                     if (progressMatch && progressMatch[1]) {
                       updateSimulation(id, {
                         progress: parseFloat(progressMatch[1])
