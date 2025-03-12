@@ -18,14 +18,14 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Heading from '@theme/Heading';
 import styles from './playground.module.css';
 
-// API endpoint for FlexNetSim simulation service
+// API endpoint for Flex Net Sim simulation service
 const API_URL = 'https://fns-api-cloud-run-787143541358.us-central1.run.app/run_simulation_stream';
 
 // Available network topologies
 const NETWORKS = ['NSFNet', 'Cost239', 'EuroCore', 'GermanNet', 'UKNet'];
 
 // Available algorithms
-const ALGORITHMS = ['FirstFit', 'ExactFit'];
+const ALGORITHMS = ['FirstFit', 'BestFit'];
 
 // Available bitrate types
 const BITRATES = ['fixed-rate', 'flex-rate'];
@@ -252,143 +252,168 @@ function PlaygroundPage() {
     return () => clearInterval(mockInterval);
   };
 
-  // Start the simulation process
-  const startSimulation = async (id) => {
-    const simulation = simulations.find(sim => sim.id === id);
-    if (!simulation) return;
+// Start the simulation process
+const startSimulation = async (id) => {
+  const simulation = simulations.find(sim => sim.id === id);
+  if (!simulation) return;
+
+  const currentParams = simulation.params;
+
+  updateSimulation(id, { 
+    stage: STAGES.RESULTS,
+    isSimulating: true,
+    outputLines: [],
+    progress: 0,
+    name: currentParams.network + ' - ' + currentParams.algorithm
+  });
+
+  // Close any existing event source
+  if (eventSourceRefs.current[id]) {
+    eventSourceRefs.current[id].close();
+  }
+
+  // Add initial message about connecting to the API
+  updateSimulation(id, {
+    outputLines: ["Connecting to FlexNetSim API..."]
+  });
+
+  try {
+    // Toggle between API and mock mode
+    const useMockData = false;
     
-    const currentParams = simulation.params;
+    if (useMockData) {
+      runMockSimulation(id);
+      return;
+    }
     
-    updateSimulation(id, { 
-      stage: STAGES.RESULTS,
-      isSimulating: true,
-      outputLines: [],
-      progress: 0
+    // Set up Server-Sent Events connection
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(currentParams),
     });
-    
-    // Close any existing event source
-    if (eventSourceRefs.current[id]) {
-      eventSourceRefs.current[id].close();
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    // Add initial message about connecting to the API
-    updateSimulation(id, {
-      outputLines: ["Connecting to FlexNetSim API..."]
-    });
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    try {
-      // Toggle between API and mock mode
-      // For development/demo, set this to true to use mock data instead of real API
-      const useMockData = false;
-      
-      if (useMockData) {
-        runMockSimulation(id);
-        return;
-      }
-      
-      // Set up Server-Sent Events connection
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(currentParams),
-      });
+    // Process the stream
+    const processStream = async () => {
+      while (true) {
+        try {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            updateSimulation(id, { isSimulating: false });
+            break;
+          }
+          
+          // Decode received chunk and add it to the buffer
+          buffer += decoder.decode(value, { stream: true });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+          // Process complete SSE messages in the buffer
+          let lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+          let currentEvent = null;
+          let step = 0;
+          const totalSteps = 20;
+          
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              currentEvent = line.substring(6).trim();
+            } else if (line.startsWith('data:')) {
+              try {
+                const eventData = JSON.parse(line.substring(5).trim());
 
-      // Process the stream
-      const processStream = async () => {
-        while (true) {
-          try {
-            const { done, value } = await reader.read();
-            
-            if (done) {
-              updateSimulation(id, { isSimulating: false });
-              break;
-            }
-            
-            // Decode the received chunk and add it to our buffer
-            buffer += decoder.decode(value, { stream: true });
-            
-            // Process complete SSE messages in the buffer
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
-            
-            for (const line of lines) {
-              if (line.startsWith('data:')) {
-                try {
-                  const eventData = JSON.parse(line.substring(5).trim());
-                  
-                  if (eventData.status === 'running' && eventData.message) {
-                    // Add the new line to our output
+                switch (currentEvent) {
+                  case 'start':
                     updateSimulation(id, sim => ({
                       outputLines: [...sim.outputLines, eventData.message]
                     }));
-                    
-                    // Extract progress information if available
-                    const progressMatch = eventData.message.match(/\s*(\d+\.\d+)%\s*\|/);
-                    if (progressMatch && progressMatch[1]) {
-                      updateSimulation(id, {
-                        progress: parseFloat(progressMatch[1])
-                      });
-                    }
-                  }
-                  
-                  if (eventData.status === 'completed' || eventData.status === 'error') {
+                    break;
+
+                  case 'data':
+                    // Regular expresion to find current progress in line message
+                    // Goes in the form: |   65.0%  | (need only the number)
+                    const progressMatch = eventData.message.match(/\|\s+(\d+\.\d)%\s+\|/);
+                    // If no match found progress is 0
+                    const progress = progressMatch ? parseFloat(progressMatch[1]) : 0;
+                    updateSimulation(id, sim => ({
+                      outputLines: [...sim.outputLines, eventData.message],
+                      progress: progress
+                    }));
+                    break;
+
+                  case 'end':
                     updateSimulation(id, { isSimulating: false });
-                  }
-                } catch (e) {
-                  console.error('Error parsing SSE data:', e);
-                  updateSimulation(id, sim => ({
-                    outputLines: [...sim.outputLines, `Warning: Error parsing data from server: ${e.message}`]
-                  }));
+                    updateSimulation(id, sim => ({
+                      progress: 100
+                    }));
+                    break;
+
+                  case 'error':
+                    updateSimulation(id, { isSimulating: false });
+                    updateSimulation(id, sim => ({
+                      outputLines: [...sim.outputLines, `Error: ${eventData.message}`]
+                    }));
+                    break;
                 }
+              } catch (e) {
+                console.error('Error parsing SSE data:', e);
+
+                updateSimulation(id, sim => ({
+                  outputLines: [...sim.outputLines, `Warning: Error parsing data from server: ${e.message}`]
+                }));
+                updateSimulation(id, sim => ({
+                  outputLines: [...sim.outputLines, line]
+                }));
               }
             }
-          } catch (streamError) {
-            console.error('Error reading stream:', streamError);
-            updateSimulation(id, sim => ({
-              outputLines: [...sim.outputLines, `Error reading data stream: ${streamError.message}`],
-              isSimulating: false
-            }));
-            break;
           }
+        } catch (streamError) {
+          console.error('Error reading stream:', streamError);
+          updateSimulation(id, sim => ({
+            outputLines: [...sim.outputLines, `Error reading data stream: ${streamError.message}`],
+            isSimulating: false
+          }));
+          break;
         }
-      };
+      }
+    };
 
-      processStream();
-    } catch (error) {
-      console.error('Error starting simulation:', error);
-      updateSimulation(id, sim => ({
-        outputLines: [
-          ...sim.outputLines,
-          `Error: ${error.message}`,
-          "",
-          "Possible reasons:",
-          "- The API server might be down or unreachable",
-          "- CORS policies might be preventing the connection",
-          "- Network connectivity issues",
-          ""
-        ]
-      }));
-      updateSimulation(id, sim => ({
-        progress: 100
-      }));
-      updateSimulation(id, { isSimulating: false });
+    processStream();
+  } catch (error) {
+    console.error('Error starting simulation:', error);
+    updateSimulation(id, sim => ({
+      outputLines: [
+        ...sim.outputLines,
+        `Error: ${error.message}`,
+        "",
+        "Possible reasons:",
+        "- The API server might be down or unreachable",
+        "- CORS policies might be preventing the connection",
+        "- Network connectivity issues",
+        ""
+      ]
+    }));
+    updateSimulation(id, { isSimulating: false });
+
+    // Fall back to mock data on error
+    // setTimeout(() => {
+    //   runMockSimulation(id);
+    // }, 2000);
+  }
+};
       
-      // Fall back to mock data on error
-      // setTimeout(() => {
-      //   runMockSimulation(id);
-      // }, 2000);
-    }
-  };
+
+
 
   // Move to next stage in the workflow
   const advanceStage = (id) => {
